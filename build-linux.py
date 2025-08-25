@@ -19,6 +19,7 @@ import zipfile
 import logging
 from pathlib import Path
 from typing import Optional
+from tqdm import tqdm
 
 try:
     import tomllib
@@ -167,15 +168,30 @@ class LinuxBuilder:
     def download_file(
         self, url: str, dest: Path, expected_hash: Optional[str] = None
     ) -> bool:
-        """Download a file with integrity checking"""
+        """Download a file with integrity checking and progress bar"""
         try:
             self.logger.info(f"Downloading {url} to {dest}")
 
-            # Download
-            urllib.request.urlretrieve(url, dest)
+            # Download with progress bar
+            def download_progress_hook(_, block_size, total_size):
+                if not hasattr(download_progress_hook, 'pbar'):
+                    download_progress_hook.pbar = tqdm(
+                        total=total_size,
+                        unit='B',
+                        unit_scale=True,
+                        desc=f"Downloading {dest.name}"
+                    )
+                download_progress_hook.pbar.update(block_size)
+                
+            urllib.request.urlretrieve(url, dest, reporthook=download_progress_hook)
+            
+            # Close progress bar
+            if hasattr(download_progress_hook, 'pbar'):
+                download_progress_hook.pbar.close()
 
             # Verify hash if provided
             if expected_hash:
+                self.logger.info(f"Verifying hash for {dest.name}")
                 actual_hash = self.get_file_hash(dest)
                 if actual_hash != expected_hash:
                     self.logger.error(
@@ -221,16 +237,24 @@ class LinuxBuilder:
             return False
 
     def extract_archive(self, archive_path: Path, dest_dir: Path) -> bool:
-        """Extract various archive formats"""
+        """Extract various archive formats with progress"""
         try:
             self.logger.info(f"Extracting {archive_path} to {dest_dir}")
 
             if archive_path.suffix in [".tar", ".tgz"] or ".tar." in archive_path.name:
                 with tarfile.open(archive_path, "r:*") as tar:
-                    tar.extractall(dest_dir)
+                    members = tar.getmembers()
+                    with tqdm(total=len(members), desc=f"Extracting {archive_path.name}") as pbar:
+                        for member in members:
+                            tar.extract(member, dest_dir)
+                            pbar.update(1)
             elif archive_path.suffix == ".zip":
                 with zipfile.ZipFile(archive_path, "r") as zip_file:
-                    zip_file.extractall(dest_dir)
+                    members = zip_file.infolist()
+                    with tqdm(total=len(members), desc=f"Extracting {archive_path.name}") as pbar:
+                        for member in members:
+                            zip_file.extract(member, dest_dir)
+                            pbar.update(1)
             else:
                 self.logger.error(f"Unsupported archive format: {archive_path}")
                 return False
@@ -372,7 +396,8 @@ class LinuxBuilder:
             return False
 
         # Download all toolchain packages first
-        for package in toolchain_packages:
+        self.logger.info(f"Downloading {len(toolchain_packages)} toolchain packages...")
+        for package in tqdm(toolchain_packages, desc="Downloading toolchain packages"):
             if not self.download_package(package):
                 self.logger.error(
                     f"Failed to download toolchain package: {package['name']}"
@@ -380,11 +405,10 @@ class LinuxBuilder:
                 return False
 
         # Build toolchain packages in order
-        for package in toolchain_packages:
-            # Skip if this is just a dependency package (no build commands)
-            if "build_commands" not in package:
-                continue
-
+        build_packages = [p for p in toolchain_packages if "build_commands" in p]
+        self.logger.info(f"Building {len(build_packages)} toolchain packages...")
+        
+        for package in tqdm(build_packages, desc="Building toolchain packages"):
             self.logger.info(
                 f"Building toolchain package: {package['name']} {package['version']}"
             )
@@ -406,7 +430,12 @@ class LinuxBuilder:
         self.logger.info("Building system packages...")
 
         packages = self.config.get("packages", [])
-        for package in packages:
+        if not packages:
+            self.logger.warning("No system packages found in configuration")
+            return True
+            
+        self.logger.info(f"Building {len(packages)} system packages...")
+        for package in tqdm(packages, desc="Building system packages"):
             if not self.build_package(package):
                 return False
 
@@ -560,26 +589,27 @@ HOME_URL="https://github.com/windfall-tech/windfall-linux"
             f"Starting build of {self.config['meta']['name']} {self.config['meta']['version']}"
         )
 
+        # Define build steps for progress tracking
+        build_steps = [
+            ("Setting up LFS environment", self.setup_lfs_environment),
+            ("Building toolchain", self.build_toolchain),
+            ("Building system packages", self.build_system_packages),
+            ("Creating system configuration", self.create_system_config),
+            ("Creating system users", self.create_system_users),
+            ("Creating bootloader", self.create_bootloader),
+        ]
+
         try:
-            # Setup environment
-            self.setup_lfs_environment()
-
-            # Build toolchain
-            if not self.build_toolchain():
-                raise Exception("Toolchain build failed")
-
-            # Build system packages
-            if not self.build_system_packages():
-                raise Exception("System packages build failed")
-
-            # Create system configuration
-            self.create_system_config()
-
-            # Create system users
-            self.create_system_users()
-
-            # Create bootloader
-            self.create_bootloader()
+            # Execute build steps with progress bar
+            for step_name, step_func in tqdm(build_steps, desc="Overall build progress"):
+                self.logger.info(f"Step: {step_name}")
+                if step_func == self.setup_lfs_environment:
+                    step_func()
+                elif step_func in [self.build_toolchain, self.build_system_packages]:
+                    if not step_func():
+                        raise Exception(f"{step_name} failed")
+                else:
+                    step_func()
 
             self.logger.info(
                 f"BUILD COMPLETE! Your Linux distribution is ready at: {self.lfs_dir}"

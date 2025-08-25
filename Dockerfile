@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y \
     texinfo \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python TOML library
-RUN pip3 install tomli || pip3 install tomllib-w
+# Install Python TOML library and tqdm for progress bars
+RUN pip3 install tqdm && (pip3 install tomli || pip3 install tomllib-w)
 
 # Create LFS user and directories
 RUN groupadd lfs && \
