@@ -1,0 +1,36 @@
+# Build artifacts
+configuration*
+lfs_build_output/
+test_output/
+
+# Custom configs
+custom/config/
+
+# Python cache
+menu/__pycache__/
+tools/__pycache__/
+**/*.pyc
+
+# Package management (generated)
+pkgmngt/packInstall.sh
+
+# Legacy XML files (converted to TOML)
+pkgmngt/packageManager.xml
+*.xml.backup
+
+# Build directories
+/mnt/
+/sources/
+/tools/
+
+# User configs (keep examples)
+my-*.toml
+!my-distro.toml
+
+# Logs
+*.log
+build.log
+
+# IDE
+.vscode/
+.idea/

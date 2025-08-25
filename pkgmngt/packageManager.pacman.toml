@@ -1,0 +1,168 @@
+# Converted from XML by xml_to_toml_converter.py
+# Edit this TOML file instead of XML files
+
+[package_manager]
+enabled = true
+type = "pacman"
+
+[package_manager.commands]
+install = [
+  "./configure --prefix=/usr \\",
+  "--without-bz2lib \\",
+  "--without-xml2   \\",
+  "--enable-bsdtar=static \\",
+  "--enable-bsdcpio=static",
+  "make",
+  "make install",
+  "./config --prefix=/usr         \\",
+  "--openssldir=/etc/ssl \\",
+  "--libdir=lib          \\",
+  "shared",
+  "make",
+  "make install",
+  "./configure --prefix=/usr \\",
+  "--disable-static \\",
+  "--with-openssl",
+  "make",
+  "make install",
+  "sed -i '/install -m.*STA/d' libcap/Makefile",
+  "make prefix=/usr lib=lib",
+  "make lib=lib prefix=/usr install",
+  "./configure --prefix=/usr",
+  "make",
+  "make install",
+  "./configure --prefix=/usr",
+  "make",
+  "make install",
+  "rm -fv /usr/lib/libz.a",
+  "./configure --prefix=/usr --disable-static --with-gcc-arch=native --disable-exec-static-tramp",
+  "make",
+  "make install",
+  "./configure --prefix=/usr --without-ensurepip --enable-shared",
+  "make",
+  "make install",
+  "python3 configure.py --bootstrap",
+  "install -vm755 ninja /usr/bin/",
+  "cp meson.py /usr/bin/meson",
+  "cp -rv mesonbuild /usr/bin",
+  "./configure --prefix=/usr              \\",
+  "--with-internal-glib       \\",
+  "--disable-host-tool        \\",
+  "--docdir=/usr/share/doc/pkg-config-&pkgconfig-version;",
+  "make",
+  "make install",
+  "mkdir build",
+  "cd build",
+  "meson --prefix=/usr                        \\",
+  "-Dcrypto=openssl                     \\",
+  "-Ddoc=disabled                       \\",
+  "-Dgpgme=disabled",
+  "ninja",
+  "ninja install",
+  "sed -e 's/\\([^!]\\)strip/\\1!strip/' \\",
+  "-e 's/\\([^!]\\)libtool/\\1!libtool/' \\",
+  "-e 's/\\([^!]\\)zipman/\\1!zipman/' \\",
+  "-i /etc/makepkg.conf",
+  "cat >> /etc/makepkg.conf << EOF",
+  "BUILDDIR=/sources",
+  "PKGDEST=/var/lib/packages",
+  "PACKAGER=\"Pierre Labastie <lnimbus@club-internet.fr>\"",
+  "EOF",
+  "cat >> /etc/pacman.conf << EOF",
+  "DBPath   = /var/lib/pacman/",
+  "CacheDir = /var/cache/pacman/pkg/",
+  "LogFile  = /var/log/pacman.log",
+  "SigLevel = Never",
+  "# Repository: do not add one now: repo-add needs openssl.",
+  "EOF",
+  "sed -i 's/groups$(EXEEXT) //' src/Makefile.in",
+  "find man -name Makefile.in -exec sed -i 's/groups\\.1 / /'   {} \\;",
+  "find man -name Makefile.in -exec sed -i 's/getspnam\\.3 / /' {} \\;",
+  "find man -name Makefile.in -exec sed -i 's/passwd\\.5 / /'   {} \\;",
+  "sed -e 's:#ENCRYPT_METHOD DES:ENCRYPT_METHOD SHA512:' \\",
+  "-e 's:/var/spool/mail:/var/mail:'                 \\",
+  "-e '/PATH=/{s@/sbin:@@;s@/bin:@@}'                \\",
+  "-i etc/login.defs",
+  "touch /usr/bin/passwd",
+  "./configure --sysconfdir=/etc --disable-static \\",
+  "--with-group-name-max-length=32",
+  "make",
+  "make install",
+  "mkdir -pv /var/{lib/{packages,pacman},cache/pkg}",
+  "if ! grep -q tester /etc/passwd; then",
+  "echo \"builder:x:101:101::/home/builder:/bin/bash\" >> /etc/passwd",
+  "echo \"builder:x:101:\" >> /etc/group",
+  "install -o builder -d /home/builder",
+  "else",
+  "TEST_UID=$(grep tester /etc/passwd | cut -d: -f3)",
+  "TEST_GID=$(grep tester /etc/group | cut -d: -f3)",
+  "echo \"builder:x:$((TEST_UID+1)):$((TEST_GID+1))::/home/builder:/bin/bash\" >> /etc/passwd",
+  "echo \"builder:x:$((TEST_GID+1)):\" >> /etc/group",
+  "install -o builder -d /home/builder",
+  "fi",
+  "chown builder:builder /var/lib/{packages,pacman}",
+  "./configure --prefix=/usr \\",
+  "--disable-static",
+  "make",
+  "make DESTDIR=$PKG_DEST install",
+  "./configure --prefix=/usr \\",
+  "--disable-static --with-openssl \\",
+  "--enable-threaded-resolver \\",
+  "--with-ca-path=/etc/ssl/certs",
+  "make",
+  "make DESTDIR=$PKG_DEST install",
+  "rm -rf docs/examples/.deps",
+  "find docs \\( -name \"Makefile*\" -o -name \"*.1\" -o -name \"*.3\" \\) -exec rm {} \\;",
+  "install -v -d -m755 $PKG_DEST/usr/share/doc/curl-&curl-version;",
+  "cp -v -R docs/*     $PKG_DEST/usr/share/doc/curl-&curl-version;",
+  "./configure --prefix=/usr",
+  "make",
+  "make DESTDIR=$PKG_DEST install",
+  "mkdir build",
+  "cd build",
+  "meson --prefix=/usr \\",
+  "-Dcrypto=openssl",
+  "ninja",
+  "DESTDIR=$PKG_DEST ninja install",
+  "sed -e 's/\\([^!]\\)strip/\\1!strip/' \\",
+  "-e 's/\\([^!]\\)zipman/\\1!zipman/' \\",
+  "-e 's/\\([^!]\\)libtool/\\1!libtool/' \\",
+  "-i /etc/makepkg.conf",
+  "cat >> /etc/makepkg.conf << EOF",
+  "BUILDDIR=/sources",
+  "PKGDEST=/var/lib/packages",
+  "PACKAGER=\"Pierre Labastie <lnimbus@club-internet.fr<\"",
+  "EOF",
+  "cat >> /etc/pacman.conf << EOF",
+  "DBPath   = /var/lib/pacman/",
+  "CacheDir = /var/cache/pacman/pkg/",
+  "LogFile  = /var/log/pacman.log",
+  "SigLevel = Never",
+  "EOF",
+]
+
+[[packages]]
+url = "&curl-url;"
+filename = "&curl-url;"
+name = "&curl"
+
+[[packages]]
+url = "&fakeroot-url;"
+filename = "&fakeroot-url;"
+name = "&fakeroot"
+
+[[packages]]
+url = "&libarchive-url;"
+filename = "&libarchive-url;"
+name = "&libarchive"
+
+[[packages]]
+url = "&pacman-url;"
+filename = "&pacman-url;"
+name = "&pacman"
+
+[[packages]]
+url = "somepatch-url"
+filename = "somepatch-url"
+name = "somepatch"
+

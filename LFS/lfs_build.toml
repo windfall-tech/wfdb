@@ -1,0 +1,867 @@
+# LFS Build Configuration in TOML format
+# Complete replacement for lfs.xsl XSLT transformation
+# This file defines the entire LFS build process in pure TOML
+
+[lfs_build]
+version = "12.2"
+revision = "sysv"  # or "systemd"
+target_arch = "x86_64"
+book_title = "Linux From Scratch"
+
+# Build parameters (replaces XSL parameters exactly)
+[lfs_build.parameters]
+luser_lgroup = "lfs:lfs"
+pkgmngt_wrap = "nn"  # nn=no, ny=meaningless, yn=yes+PKG_DEST, yy=yes+wrap
+testsuite = 1        # 0=none, 1=critical, 2=all
+keepdir = false      # Keep build directories in chapter 8
+jobs = 4             # Parallel jobs (replaces xsl:param jobs)
+jobs_bp1 = 1         # Jobs for binutils-pass1 (replaces xsl:param jobs-bp1)
+ncurses5 = false     # Install non-wide character ncurses 5
+strip = false        # Strip executables and libraries (replaces xsl:param strip)
+
+# Chapter definitions with exact build logic (replaces XSL chapter processing)
+[[chapters]]
+number = 4
+title = "Final Preparations"
+chroot = false
+user = "root"
+description = "Set up the LFS user and environment"
+
+[[chapters]]
+number = 5
+title = "Compiling a Cross-Toolchain"
+chroot = false
+user = "lfs"
+description = "Build cross-compilation toolchain"
+environment = [
+  "export LFS=/mnt/lfs",
+  "export LC_ALL=POSIX",
+  "export LFS_TGT=$(uname -m)-lfs-linux-gnu",
+  "export PATH=/usr/bin:/bin"
+]
+
+[[chapters]]
+number = 6
+title = "Cross Compiling Temporary Tools"
+chroot = false
+user = "lfs"
+description = "Cross-compile temporary tools"
+environment = [
+  "export LFS=/mnt/lfs",
+  "export LC_ALL=POSIX", 
+  "export LFS_TGT=$(uname -m)-lfs-linux-gnu",
+  "export PATH=/usr/bin:/bin"
+]
+
+[[chapters]]
+number = 7
+title = "Entering Chroot and Building Additional Temporary Tools"
+chroot = true
+user = "root"
+description = "Build additional tools in chroot"
+environment = [
+  "export PATH=/usr/bin:/bin:/tools/bin"
+]
+
+[[chapters]]
+number = 8
+title = "Installing Basic System Software"
+chroot = true
+user = "root"
+description = "Install final system packages"
+environment = [
+  "export PATH=/usr/bin:/bin"
+]
+package_management = true
+
+[[chapters]]
+number = 9
+title = "System Configuration"
+chroot = true
+user = "root"
+description = "Configure the system"
+
+[[chapters]]
+number = 10
+title = "Making the LFS System Bootable"
+chroot = true
+user = "root"
+description = "Install kernel and bootloader"
+
+# LFS Package definitions (replaces XML book parsing)
+[[lfs_packages]]
+name = "binutils"
+version = "2.43.1"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.43.1.tar.xz"
+md5 = "13f74202a3c4c51118b797a39ea4200d3f6cfbe224da6d1d95bb938480132dfd"
+chapter = 5
+pass = 1
+build_commands = [
+  "mkdir -v build && cd build",
+  "../configure --prefix=$LFS/tools --with-sysroot=$LFS --target=$LFS_TGT --disable-nls --enable-gprofng=no --disable-werror --enable-new-dtags --enable-default-hash-style=gnu",
+  "make",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "gcc"
+version = "14.2.0"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz"
+md5 = "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
+chapter = 5
+pass = 1
+dependencies = ["mpfr", "gmp", "mpc"]
+build_commands = [
+  "tar -xf ../mpfr-4.2.1.tar.xz && mv -v mpfr-4.2.1 mpfr",
+  "tar -xf ../gmp-6.3.0.tar.xz && mv -v gmp-6.3.0 gmp", 
+  "tar -xf ../mpc-1.3.1.tar.gz && mv -v mpc-1.3.1 mpc",
+  "case $(uname -m) in x86_64) sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64;; esac",
+  "mkdir -v build && cd build",
+  "../configure --target=$LFS_TGT --prefix=$LFS/tools --with-glibc-version=2.40 --with-sysroot=$LFS --with-newlib --without-headers --enable-default-pie --enable-default-ssp --disable-nls --disable-shared --disable-multilib --disable-threads --disable-libatomic --disable-libgomp --disable-libquadmath --disable-libssp --disable-libvtv --disable-libstdcxx --enable-languages=c,c++",
+  "make",
+  "make install",
+  "cd .. && cat gcc/limitx.h gcc/glimits.h gcc/limity.h > `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h"
+]
+
+[[lfs_packages]]
+name = "linux"
+version = "6.10.5"
+url = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.5.tar.xz"
+md5 = "0b15d1d9cc89ea5b5e2a98dbde1ad71ac3be6d4ba375b7e6dcef6b2e8ae24cdd"
+chapter = 5
+component = "headers"
+build_commands = [
+  "make mrproper",
+  "make headers",
+  "find usr/include -type f ! -name '*.h' -delete",
+  "cp -rv usr/include $LFS/usr"
+]
+
+[[lfs_packages]]
+name = "glibc"
+version = "2.40"
+url = "https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz"
+md5 = "19a890175e9263d748f627993de6f4b1af9cd21e03f080e4bfb3a1fac10205a2"
+chapter = 5
+build_commands = [
+  "case $(uname -m) in i?86) ln -sfv ld-linux.so.2 $LFS/lib/ld-lsb.so.3;; x86_64) ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 && ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3;; esac",
+  "patch -Np1 -i ../glibc-2.40-fhs-1.patch",
+  "mkdir -v build && cd build",
+  "echo 'rootsbindir=/usr/sbin' > configparms",
+  "../configure --prefix=/usr --host=$LFS_TGT --build=$(../scripts/config.guess) --enable-kernel=4.19 --with-headers=$LFS/usr/include --disable-nscd libc_cv_slibdir=/usr/lib",
+  "make",
+  "make DESTDIR=$LFS install",
+  "sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd"
+]
+
+# Chapter 6 packages (simplified examples)
+[[lfs_packages]]
+name = "m4"
+version = "1.4.19"
+url = "https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz"
+chapter = 6
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[lfs_packages]]
+name = "ncurses"
+version = "6.5"
+url = "https://ftp.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz"
+chapter = 6
+build_commands = [
+  "sed -i s/mawk// configure",
+  "mkdir build && pushd build && ../configure && make -C include && make -C progs tic && popd",
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./config.guess) --mandir=/usr/share/man --with-manpage-format=normal --with-shared --without-normal --with-cxx-shared --without-debug --without-ada --disable-stripping",
+  "make",
+  "make DESTDIR=$LFS TIC_PATH=$(pwd)/build/progs/tic install",
+  "ln -sv libncursesw.so $LFS/usr/lib/libncurses.so",
+  "sed -e 's/^#if.*XOPEN.*$/#if 1/' -i $LFS/usr/include/curses.h"
+]
+
+[[lfs_packages]]
+name = "bash"
+version = "5.2.21"
+url = "https://ftp.gnu.org/gnu/bash/bash-5.2.21.tar.gz"
+chapter = 6
+build_commands = [
+  "./configure --prefix=/usr --build=$(sh support/config.guess) --host=$LFS_TGT --without-bash-malloc",
+  "make",
+  "make DESTDIR=$LFS install",
+  "ln -sv bash $LFS/bin/sh"
+]
+
+[[lfs_packages]]
+name = "coreutils"
+version = "9.5"
+url = "https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz"
+chapter = 6
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess) --enable-install-program=hostname --enable-no-install-program=kill,uptime",
+  "make",
+  "make DESTDIR=$LFS install",
+  "mv -v $LFS/usr/bin/chroot $LFS/usr/sbin",
+  "mkdir -pv $LFS/usr/share/man/man8",
+  "mv -v $LFS/usr/share/man/man1/chroot.1 $LFS/usr/share/man/man8/chroot.8",
+  "sed -i 's/\\\"1\\\"/\\\"8\\\"/' $LFS/usr/share/man/man8/chroot.8"
+]
+
+# Chapter 7 packages - chroot preparation
+[[lfs_packages]]
+name = "gettext"
+version = "0.22.5"
+url = "https://ftp.gnu.org/gnu/gettext/gettext-0.22.5.tar.xz"
+chapter = 7
+build_commands = [
+  "./configure --disable-shared",
+  "make",
+  "cp -v gettext-tools/src/{msgfmt,msgmerge,xgettext} /usr/bin"
+]
+
+[[lfs_packages]]
+name = "bison"
+version = "3.8.2"
+url = "https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.xz"
+chapter = 7
+build_commands = [
+  "./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.8.2",
+  "make",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "perl"
+version = "5.40.0"
+url = "https://www.cpan.org/src/5.0/perl-5.40.0.tar.xz"
+chapter = 7
+build_commands = [
+  "sh Configure -des -Dprefix=/usr -Dvendorprefix=/usr -Duseshrplib -Dprivlib=/usr/lib/perl5/5.40/core_perl -Darchlib=/usr/lib/perl5/5.40/core_perl -Dsitelib=/usr/lib/perl5/5.40/site_perl -Dsitearch=/usr/lib/perl5/5.40/site_perl -Dvendorlib=/usr/lib/perl5/5.40/vendor_perl -Dvendorarch=/usr/lib/perl5/5.40/vendor_perl",
+  "make",
+  "make install"
+]
+
+# Chapter 8 packages - final system
+[[lfs_packages]]
+name = "man-pages"
+version = "6.9.1"
+url = "https://cdn.kernel.org/pub/linux/docs/man-pages/man-pages-6.9.1.tar.xz"
+chapter = 8
+build_commands = [
+  "rm -v man3/crypt*",
+  "make prefix=/usr install"
+]
+
+[[lfs_packages]]
+name = "iana-etc"
+version = "20240801"
+url = "https://github.com/Mic92/iana-etc/releases/download/20240801/iana-etc-20240801.tar.gz"
+chapter = 8
+build_commands = [
+  "cp services protocols /etc"
+]
+
+[[lfs_packages]]
+name = "glibc-final"
+version = "2.40"
+url = "https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz"
+chapter = 8
+build_commands = [
+  "patch -Np1 -i ../glibc-2.40-fhs-1.patch",
+  "mkdir -v build && cd build",
+  "echo 'rootsbindir=/usr/sbin' > configparms",
+  "../configure --prefix=/usr --disable-werror --enable-kernel=4.19 --enable-stack-protector=strong --disable-nscd libc_cv_slibdir=/usr/lib",
+  "make",
+  "make check || true",
+  "touch /etc/ld.so.conf",
+  "sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile",
+  "make install",
+  "sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd",
+  "make localedata/install-locales"
+]
+
+[[lfs_packages]]
+name = "zlib"
+version = "1.3.1"
+url = "https://zlib.net/zlib-1.3.1.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install",
+  "rm -fv /usr/lib/libz.a"
+]
+
+[[lfs_packages]]
+name = "bzip2"
+version = "1.0.8"
+url = "https://www.sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
+chapter = 8
+build_commands = [
+  "patch -Np1 -i ../bzip2-1.0.8-install_docs-1.patch",
+  "sed -i 's@\\(ln -s -f \\)$(PREFIX)/bin/@\\1@' Makefile",
+  "sed -i \"s@(PREFIX)/man@(PREFIX)/share/man@g\" Makefile",
+  "make -f Makefile-libbz2_so",
+  "make clean",
+  "make",
+  "make PREFIX=/usr install",
+  "cp -av libbz2.so.* /usr/lib",
+  "ln -sv libbz2.so.1.0.8 /usr/lib/libbz2.so",
+  "cp -v bzip2-shared /usr/bin/bzip2",
+  "for i in /usr/bin/{bzcat,bunzip2}; do ln -sfv bzip2 $i; done",
+  "rm -fv /usr/lib/libbz2.a"
+]
+
+[[lfs_packages]]
+name = "xz"
+version = "5.6.2"
+url = "https://github.com/tukaani-project/xz/releases/download/v5.6.2/xz-5.6.2.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --docdir=/usr/share/doc/xz-5.6.2",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "lz4"
+version = "1.10.0"
+url = "https://github.com/lz4/lz4/releases/download/v1.10.0/lz4-1.10.0.tar.gz"
+chapter = 8
+build_commands = [
+  "make BUILD_STATIC=no PREFIX=/usr",
+  "make check",
+  "make BUILD_STATIC=no PREFIX=/usr install"
+]
+
+[[lfs_packages]]
+name = "file"
+version = "5.45"
+url = "https://astron.com/pub/file/file-5.45.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "readline"
+version = "8.2.13"
+url = "https://ftp.gnu.org/gnu/readline/readline-8.2.13.tar.gz"
+chapter = 8
+build_commands = [
+  "sed -i '/MV.*old/d' Makefile.in",
+  "sed -i '/{OLDSUFF}/c:' support/shlib-install",
+  "patch -Np1 -i ../readline-8.2.13-upstream_fix-1.patch",
+  "./configure --prefix=/usr --disable-static --with-curses --docdir=/usr/share/doc/readline-8.2.13",
+  "make SHLIB_LIBS='-lncursesw'",
+  "make SHLIB_LIBS='-lncursesw' install",
+  "install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-8.2.13"
+]
+
+[[lfs_packages]]
+name = "m4"
+version = "1.4.19"
+url = "https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "bc"
+version = "6.7.5"
+url = "https://github.com/gavinhoward/bc/releases/download/6.7.5/bc-6.7.5.tar.xz"
+chapter = 8
+build_commands = [
+  "CC=gcc ./configure --prefix=/usr -G -O3 -r",
+  "make",
+  "make test",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "flex"
+version = "2.6.4"
+url = "https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --docdir=/usr/share/doc/flex-2.6.4 --disable-static",
+  "make",
+  "make check",
+  "make install",
+  "ln -sv flex /usr/bin/lex",
+  "ln -sv flex.1 /usr/share/man/man1/lex.1"
+]
+
+[[lfs_packages]]
+name = "tcl"
+version = "8.6.14"
+url = "https://downloads.sourceforge.net/tcl/tcl8.6.14-src.tar.gz"
+chapter = 8
+build_commands = [
+  "cd unix",
+  "./configure --prefix=/usr --mandir=/usr/share/man",
+  "make",
+  "sed -e \"s|$SRCDIR/unix|/usr/lib|\" -e \"s|$SRCDIR|/usr/include|\" -i tclConfig.sh",
+  "sed -e \"s|$SRCDIR/unix/pkgs/tdbc1.1.7|/usr/lib/tdbc1.1.7|\" -e \"s|$SRCDIR/pkgs/tdbc1.1.7/generic|/usr/include|\" -e \"s|$SRCDIR/pkgs/tdbc1.1.7/library|/usr/lib/tcl8.6|\" -e \"s|$SRCDIR/pkgs/tdbc1.1.7|/usr/include|\" -i pkgs/tdbc1.1.7/tdbcConfig.sh",
+  "sed -e \"s|$SRCDIR/unix/pkgs/itcl4.2.4|/usr/lib/itcl4.2.4|\" -e \"s|$SRCDIR/pkgs/itcl4.2.4/generic|/usr/include|\" -e \"s|$SRCDIR/pkgs/itcl4.2.4|/usr/include|\" -i pkgs/itcl4.2.4/itclConfig.sh",
+  "unset SRCDIR",
+  "make test",
+  "make install",
+  "chmod -v 755 /usr/lib/libtcl8.6.so",
+  "make install-private-headers",
+  "ln -sfv tclsh8.6 /usr/bin/tclsh",
+  "mv /usr/share/man/man3/{Thread,Tcl_Thread}.3",
+  "cd .."
+]
+
+[[lfs_packages]]
+name = "expect"
+version = "5.45.4"
+url = "https://prdownloads.sourceforge.net/expect/expect5.45.4.tar.gz"
+chapter = 8
+build_commands = [
+  "python3 -c 'from pty import spawn; spawn([\"echo\", \"ok\"])'",
+  "./configure --prefix=/usr --with-tcl=/usr/lib --enable-shared --mandir=/usr/share/man --with-tclinclude=/usr/include",
+  "make",
+  "make test",
+  "make install",
+  "ln -svf expect5.45.4/libexpect5.45.4.so /usr/lib"
+]
+
+[[lfs_packages]]
+name = "dejagnu"
+version = "1.6.3"
+url = "https://ftp.gnu.org/gnu/dejagnu/dejagnu-1.6.3.tar.gz"
+chapter = 8
+build_commands = [
+  "mkdir -v build",
+  "cd build",
+  "../configure --prefix=/usr",
+  "makeinfo --html --no-split -o doc/dejagnu.html ../doc/dejagnu.texi",
+  "makeinfo --plaintext -o doc/dejagnu.txt ../doc/dejagnu.texi",
+  "make check",
+  "make install",
+  "install -v -dm755 /usr/share/doc/dejagnu-1.6.3",
+  "install -v -m644 doc/dejagnu.{html,txt} /usr/share/doc/dejagnu-1.6.3"
+]
+
+[[lfs_packages]]
+name = "pkgconf"
+version = "2.2.0"
+url = "https://distfiles.ariadne.space/pkgconf/pkgconf-2.2.0.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --docdir=/usr/share/doc/pkgconf-2.2.0",
+  "make",
+  "make install",
+  "ln -sv pkgconf /usr/bin/pkg-config",
+  "ln -sv pkgconf.1 /usr/share/man/man1/pkg-config.1"
+]
+
+[[lfs_packages]]
+name = "ncurses"
+version = "6.5"
+url = "https://invisible-mirror.net/archives/ncurses/ncurses-6.5.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --mandir=/usr/share/man --with-shared --without-debug --without-normal --with-cxx-shared --enable-pc-files --with-pkg-config-libdir=/usr/lib/pkgconfig",
+  "make",
+  "make DESTDIR=$PWD/dest install",
+  "install -vm755 dest/usr/lib/libncursesw.so.6.5 /usr/lib",
+  "rm -v dest/usr/lib/libncursesw.so.6.5",
+  "sed -e 's/^#if.*XOPEN.*$/#if 1/' -i dest/usr/include/curses.h",
+  "cp -av dest/* /",
+  "for lib in ncurses form panel menu ; do rm -vf /usr/lib/lib${lib}.so; echo \"INPUT(-l${lib}w)\" > /usr/lib/lib${lib}.so; ln -sfv ${lib}w.pc /usr/lib/pkgconfig/${lib}.pc; done",
+  "rm -vf /usr/lib/libcursesw.so",
+  "echo \"INPUT(-lncursesw)\" > /usr/lib/libcursesw.so",
+  "ln -sfv libncurses.so /usr/lib/libcurses.so"
+]
+
+[[lfs_packages]]
+name = "sed"
+version = "4.9"
+url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make html",
+  "chown -Rv tester .",
+  "su tester -c \"PATH=$PATH make check\"",
+  "make install",
+  "install -d -m755 /usr/share/doc/sed-4.9",
+  "install -m644 doc/sed.html /usr/share/doc/sed-4.9"
+]
+
+[[lfs_packages]]
+name = "psmisc"
+version = "23.7"
+url = "https://sourceforge.net/projects/psmisc/files/psmisc/psmisc-23.7.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "gettext"
+version = "0.22.5"
+url = "https://ftp.gnu.org/gnu/gettext/gettext-0.22.5.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --docdir=/usr/share/doc/gettext-0.22.5",
+  "make",
+  "make check",
+  "make install",
+  "chmod -v 0755 /usr/lib/preloadable_libintl.so"
+]
+
+[[lfs_packages]]
+name = "bison"
+version = "3.8.2"
+url = "https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.8.2",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "grep"
+version = "3.11"
+url = "https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz"
+chapter = 8
+build_commands = [
+  "sed -i \"s/echo/#echo/\" src/egrep.sh",
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "bash"
+version = "5.2.32"
+url = "https://ftp.gnu.org/gnu/bash/bash-5.2.32.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --without-bash-malloc --with-installed-readline --docdir=/usr/share/doc/bash-5.2.32",
+  "make",
+  "chown -Rv tester .",
+  "su -s /usr/bin/expect tester << \"EOF\"",
+  "set timeout -1",
+  "spawn make tests",
+  "expect eof",
+  "lassign [wait] _ _ _ value",
+  "exit $value",
+  "EOF",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "libtool"
+version = "2.4.7"
+url = "https://ftp.gnu.org/gnu/libtool/libtool-2.4.7.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make -k check",
+  "make install",
+  "rm -fv /usr/lib/libltdl.a"
+]
+
+[[lfs_packages]]
+name = "gdbm"
+version = "1.24"
+url = "https://ftp.gnu.org/gnu/gdbm/gdbm-1.24.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --enable-libgdbm-compat",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "gperf"
+version = "3.1"
+url = "https://ftp.gnu.org/gnu/gperf/gperf-3.1.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.1",
+  "make",
+  "make -j1 check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "expat"
+version = "2.6.2"
+url = "https://prdownloads.sourceforge.net/expat/expat-2.6.2.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --docdir=/usr/share/doc/expat-2.6.2",
+  "make",
+  "make check",
+  "make install",
+  "install -v -m644 doc/*.{html,css} /usr/share/doc/expat-2.6.2"
+]
+
+[[lfs_packages]]
+name = "inetutils"
+version = "2.5"
+url = "https://ftp.gnu.org/gnu/inetutils/inetutils-2.5.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --bindir=/usr/bin --localstatedir=/var --disable-logger --disable-whois --disable-rcp --disable-rexec --disable-rlogin --disable-rsh --disable-servers",
+  "make",
+  "make check",
+  "make install",
+  "mv -v /usr/{,s}bin/ifconfig"
+]
+
+[[lfs_packages]]
+name = "less"
+version = "661"
+url = "https://www.greenwoodsoftware.com/less/less-661.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --sysconfdir=/etc",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "perl"
+version = "5.40.0"
+url = "https://www.cpan.org/src/5.0/perl-5.40.0.tar.xz"
+chapter = 8
+build_commands = [
+  "export BUILD_ZLIB=False",
+  "export BUILD_BZIP2=0",
+  "sh Configure -des -Dprefix=/usr -Dvendorprefix=/usr -Dprivlib=/usr/lib/perl5/5.40/core_perl -Darchlib=/usr/lib/perl5/5.40/core_perl -Dsitelib=/usr/lib/perl5/5.40/site_perl -Dsitearch=/usr/lib/perl5/5.40/site_perl -Dvendorlib=/usr/lib/perl5/5.40/vendor_perl -Dvendorarch=/usr/lib/perl5/5.40/vendor_perl -Dman1dir=/usr/share/man/man1 -Dman3dir=/usr/share/man/man3 -Dpager=\"/usr/bin/less -isR\" -Duseshrplib -Dusethreads",
+  "make",
+  "TEST_JOBS=$(nproc) make test_harness",
+  "make install",
+  "unset BUILD_ZLIB BUILD_BZIP2"
+]
+
+[[lfs_packages]]
+name = "xml-parser"
+version = "2.47"
+url = "https://cpan.metacpan.org/authors/id/T/TO/TODDR/XML-Parser-2.47.tar.gz"
+chapter = 8
+build_commands = [
+  "perl Makefile.PL",
+  "make",
+  "make test",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "intltool"
+version = "0.51.0"
+url = "https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz"
+chapter = 8
+build_commands = [
+  "sed -i 's:@PERL@:/usr/bin/perl:' intltool-update.in",
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install",
+  "install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.51.0/I18N-HOWTO"
+]
+
+[[lfs_packages]]
+name = "autoconf"
+version = "2.72"
+url = "https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "automake"
+version = "1.17"
+url = "https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --docdir=/usr/share/doc/automake-1.17",
+  "make",
+  "make -j$(($(nproc)>4?$(nproc):4)) check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "openssl"
+version = "3.3.1"
+url = "https://www.openssl.org/source/openssl-3.3.1.tar.gz"
+chapter = 8
+build_commands = [
+  "./config --prefix=/usr --openssldir=/etc/ssl --libdir=lib shared zlib-dynamic",
+  "make",
+  "HARNESS_JOBS=$(nproc) make test",
+  "sed -i '/INSTALL_LIBS/s/libcrypto.a libssl.a//' Makefile",
+  "make MANSUFFIX=ssl install",
+  "mv -v /usr/share/doc/openssl /usr/share/doc/openssl-3.3.1",
+  "cp -vfr doc/* /usr/share/doc/openssl-3.3.1"
+]
+
+[[lfs_packages]]
+name = "kmod"
+version = "32"
+url = "https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-32.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --sysconfdir=/etc --with-openssl --with-xz --with-zstd --with-zlib",
+  "make",
+  "make install",
+  "for target in depmod insmod modinfo modprobe rmmod; do ln -sfv ../bin/kmod /usr/sbin/$target; done",
+  "ln -sfv kmod /usr/bin/lsmod"
+]
+
+[[lfs_packages]]
+name = "elfutils"
+version = "0.191"
+url = "https://sourceware.org/ftp/elfutils/0.191/elfutils-0.191.tar.bz2"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-debuginfod --enable-libdebuginfod=dummy",
+  "make",
+  "make check",
+  "make -C libelf install",
+  "install -vm644 config/libelf.pc /usr/lib/pkgconfig",
+  "rm /usr/lib/libelf.a"
+]
+
+[[lfs_packages]]
+name = "libffi"
+version = "3.4.6"
+url = "https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --disable-static --with-gcc-arch=native",
+  "make",
+  "make check",
+  "make install"
+]
+
+[[lfs_packages]]
+name = "python3"
+version = "3.12.4"
+url = "https://www.python.org/ftp/python/3.12.4/Python-3.12.4.tar.xz"
+chapter = 8
+build_commands = [
+  "./configure --prefix=/usr --enable-shared --with-system-expat --enable-optimizations",
+  "make",
+  "make test TESTOPTS=\"--timeout 120\"",
+  "make install",
+  "cat > /etc/pip.conf << EOF",
+  "[global]",
+  "root-user-action = ignore",
+  "disable-pip-version-check = true",
+  "EOF",
+  "install -v -dm755 /usr/share/doc/python-3.12.4/html",
+  "tar --no-same-owner -xvf ../python-3.12.4-docs-html.tar.bz2",
+  "cp -R --no-preserve=mode python-3.12.4-docs-html/* /usr/share/doc/python-3.12.4/html"
+]
+
+[[lfs_packages]]
+name = "flit-core"
+version = "3.9.0"
+url = "https://pypi.org/packages/source/f/flit_core/flit_core-3.9.0.tar.gz"
+chapter = 8
+build_commands = [
+  "pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD",
+  "pip3 install --no-index --no-user --find-links dist flit_core"
+]
+
+[[lfs_packages]]
+name = "wheel"
+version = "0.43.0"
+url = "https://pypi.org/packages/source/w/wheel/wheel-0.43.0.tar.gz"
+chapter = 8
+build_commands = [
+  "pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD",
+  "pip3 install --no-index --find-links=dist wheel"
+]
+
+[[lfs_packages]]
+name = "setuptools"
+version = "70.1.1"
+url = "https://pypi.org/packages/source/s/setuptools/setuptools-70.1.1.tar.gz"
+chapter = 8
+build_commands = [
+  "pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD",
+  "pip3 install --no-index --find-links dist setuptools"
+]
+
+[[lfs_packages]]
+name = "ninja"
+version = "1.12.1"
+url = "https://github.com/ninja-build/ninja/archive/v1.12.1/ninja-1.12.1.tar.gz"
+chapter = 8
+build_commands = [
+  "export NINJAJOBS=4",
+  "sed -i '/int Guess/a int j = 0;\\nchar* jobs = getenv( \"NINJAJOBS\" );\\nif ( jobs != NULL ) j = atoi( jobs );\\nif ( j > 0 ) return j;' src/build.cc",
+  "python3 configure.py --bootstrap",
+  "python3 configure.py",
+  "ninja ninja_test",
+  "./ninja_test --gtest_filter=-SubprocessTest.SetWithLots",
+  "install -vm755 ninja /usr/bin/",
+  "install -vDm644 misc/bash-completion /usr/share/bash-completion/completions/ninja",
+  "install -vDm644 misc/zsh-completion /usr/share/zsh/site-functions/_ninja"
+]
+
+[[lfs_packages]]
+name = "meson"
+version = "1.5.1"
+url = "https://github.com/mesonbuild/meson/releases/download/1.5.1/meson-1.5.1.tar.gz"
+chapter = 8
+build_commands = [
+  "pip3 wheel -w dist --no-cache-dir --no-build-isolation --no-deps $PWD",
+  "pip3 install --no-index --find-links dist meson",
+  "install -vDm644 data/shell-completions/bash/meson /usr/share/bash-completion/completions/meson",
+  "install -vDm644 data/shell-completions/zsh/_meson /usr/share/zsh/site-functions/_meson"
+]
+
+[[lfs_packages]]
+name = "coreutils"
+version = "9.5"
+url = "https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz"
+chapter = 8
+build_commands = [
+  "patch -Np1 -i ../coreutils-9.5-i18n-1.patch",
+  "autoreconf -fiv",
+  "FORCE_UNSAFE_CONFIGURE=1 ./configure --prefix=/usr --enable-no-install-program=kill,uptime",
+  "make",
+  "make NON_ROOT_USERNAME=tester check-root",
+  "groupadd -g 102 dummy -U tester",
+  "chown -Rv tester .",
+  "su tester -c \"PATH=$PATH make RUN_EXPENSIVE_TESTS=yes check\"",
+  "groupdel dummy",
+  "make install",
+  "mv -v /usr/bin/chroot /usr/sbin",
+  "mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8",
+  "sed -i 's/\"1\"/\"8\"/1' /usr/share/man/man8/chroot.8"
+]

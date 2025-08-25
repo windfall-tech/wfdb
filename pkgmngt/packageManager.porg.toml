@@ -1,0 +1,60 @@
+# Converted from XML by xml_to_toml_converter.py
+# Edit this TOML file instead of XML files
+
+[package_manager]
+enabled = true
+type = "porg"
+
+[package_manager.commands]
+install = [
+  "patch -Np1 -i ../porg-0.10-renameat2-1.patch",
+  "./configure --prefix=/tools \\",
+  "--disable-grop  \\",
+  "--with-porg-logdir=/tools/var/porg",
+  "make",
+  "make install",
+  "cat >> /tools/etc/porgrc << EOF",
+  "# Porg logdir on LFS system",
+  "LOGDIR=/var/lib/porg",
+  "EOF",
+  "sed -e '/EXCLUDE/{s/^#//;s@$@:/sources:/home@}' \\",
+  "-i /tools/etc/porgrc",
+  "mkdir -pv /var/lib/porg",
+  "mkdir -pv /var/lib/packages",
+  "if [ -f /tools/etc/porgrc ]; then",
+  "cp /tools/etc/porgrc /etc",
+  "fi",
+  "patch -Np1 -i ../porg-0.10-renameat2-1.patch",
+  "./configure --prefix=/usr     \\",
+  "--disable-grop    \\",
+  "--sysconfdir=/etc \\",
+  "--with-porg-logdir=/var/lib/porg",
+  "make",
+  "make install",
+  "mkdir -p /usr/share/bash-completion/completions",
+  "mv /etc/bash_completion.d/porg* /usr/share/bash-completion/completions",
+  "sed -e '/EXCLUDE/{s/^#//;s@$@:/sources:/home@}' \\",
+  "-e '/LOGDIR/s/^#//' \\",
+  "-i /etc/porgrc",
+  "patch -Np1 -i ../porg-0.10-renameat2-1.patch",
+  "./configure --prefix=/usr     \\",
+  "--disable-grop    \\",
+  "--sysconfdir=/etc \\",
+  "--with-porg-logdir=/var/lib/porg",
+  "make",
+  "porg -lD \"make install",
+  "mv /etc/bash_completion.d/porg* /usr/share/bash-completion/completions\"",
+  "sed -e '/EXCLUDE/{s/^#//;s@$@:/sources:/home@}' \\",
+  "-i /etc/porgrc",
+]
+
+[[packages]]
+url = "&porg-url;"
+filename = "&porg-url;"
+name = "&porg"
+
+[[packages]]
+url = "&porg-patch-url;"
+filename = "&porg-patch-url;"
+name = "&porg"
+
