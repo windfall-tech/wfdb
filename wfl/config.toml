@@ -8,11 +8,9 @@ CUSTOM_TOOLS = true
 REBUILD_MAKEFILE = false
 N_PARALLEL = 4
 ALL_CORES = false
-# Use TOML-based build system instead of XML/XSLT
-USE_TOML_BUILD = true
 
 [meta]
-OS_NAME = "WindfallLinux"
+OS_NAME = "Windfall Linux"
 OS_VERSION = "1.0"
 
 # Package manager configuration (replaces XML)
