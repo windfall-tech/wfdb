@@ -1,0 +1,68 @@
+# Simple Linux Configuration
+# A minimal Linux distribution with just the basics
+
+[meta]
+name = "Simple Linux"
+version = "1.0"
+
+[build]
+jobs = 4
+lfs_dir = "/mnt/lfs"
+sources_dir = "/sources"
+tools_dir = "/tools"
+version = "12.2"
+debug = false
+
+# External configuration files
+toolchain_config = "../LFS/toolchain.toml"
+lfs_config = "../LFS/lfs_build.toml"
+
+# Simple users setup
+[users]
+lfs_user = "lfs"
+lfs_group = "lfs"
+
+[[users.system]]
+name = "root"
+uid = 0
+gid = 0
+home = "/root"
+shell = "/bin/bash"
+
+[[users.system]]
+name = "user"
+uid = 1000
+gid = 1000
+home = "/home/user"
+shell = "/bin/bash"
+groups = ["users"]
+
+# Additional packages to install (after LFS base system)
+[[packages]]
+name = "nano"
+version = "7.2"
+url = "https://ftp.gnu.org/gnu/nano/nano-7.2.tar.xz"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc --enable-utf8",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "wget"
+version = "1.21.4"
+url = "https://ftp.gnu.org/gnu/wget/wget-1.21.4.tar.gz"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc --with-ssl=openssl",
+    "make",
+    "make install"
+]
+chapter = 5
+component = "headers"
+
+[[lfs_packages]]
+name = "glibc"
+version = "2.40"
+url = "https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz"
+md5 = "19a890175e9263d748f627993de6f4b1af9cd21e03f080e4bfb3a1fac10205a2"
+chapter = 5

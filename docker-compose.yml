@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  windfall-linux-builder:
+    build: .
+    container_name: windfall-linux-build
+    privileged: true
+    volumes:
+      # Mount output directory to preserve built system
+      - ./output:/mnt/lfs
+      - ./sources:/sources
+      # Mount logs directory
+      - ./logs:/var/log/windfall
+    environment:
+      - LC_ALL=POSIX
+      - LFS=/mnt/lfs
+      - PATH=/usr/bin:/bin:/usr/sbin:/sbin
+    command: python3 build-linux.py examples/simple.toml
+    
+  # Alternative service for interactive debugging
+  windfall-linux-debug:
+    build: .
+    container_name: windfall-linux-debug
+    privileged: true
+    volumes:
+      - ./output:/mnt/lfs
+      - ./sources:/sources
+      - ./logs:/var/log/windfall
+    environment:
+      - LC_ALL=POSIX
+      - LFS=/mnt/lfs
+      - PATH=/usr/bin:/bin:/usr/sbin:/sbin
+    command: /bin/bash
+    stdin_open: true
+    tty: true

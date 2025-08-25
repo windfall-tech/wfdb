@@ -1,0 +1,102 @@
+# Developer Linux Configuration
+# A Linux distribution with development tools and utilities
+
+[meta]
+name = "Dev Linux"
+version = "1.0"
+description = "Linux distribution for developers"
+
+[build]
+jobs = 8
+lfs_dir = "/mnt/devlinux"
+sources_dir = "/sources"
+tools_dir = "/tools"
+version = "12.2"
+debug = true
+
+# External configuration files
+toolchain_config = "LFS/toolchain.toml"
+lfs_config = "LFS/lfs_build.toml"
+
+# Developer users
+[users]
+lfs_user = "lfs"
+lfs_group = "lfs"
+
+[[users.system]]
+name = "root"
+uid = 0
+gid = 0
+home = "/root"
+shell = "/bin/bash"
+
+[[users.system]]
+name = "developer"
+uid = 1000
+gid = 1000
+home = "/home/developer"
+shell = "/bin/bash"
+groups = ["wheel", "sudo", "users"]
+
+# Development packages (added after LFS base system)
+[[packages]]
+name = "git"
+version = "2.42.0"
+url = "https://github.com/git/git/archive/v2.42.0.tar.gz"
+build = [
+    "make configure",
+    "./configure --prefix=/usr --with-libpcre2 --with-python=python3",
+    "make all",
+    "make install"
+]
+
+[[packages]]
+name = "vim"
+version = "9.0"
+url = "https://github.com/vim/vim/archive/v9.0.0000.tar.gz"
+build = [
+    "./configure --prefix=/usr --enable-multibyte --with-features=huge",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "python3"
+version = "3.11.5"
+url = "https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tar.xz"
+build = [
+    "./configure --prefix=/usr --enable-optimizations --with-ensurepip=install",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "nodejs"
+version = "18.17.1"
+url = "https://nodejs.org/dist/v18.17.1/node-v18.17.1.tar.xz"
+build = [
+    "./configure --prefix=/usr",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "gcc"
+version = "13.2.0"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz"
+build = [
+    "mkdir build && cd build",
+    "../configure --prefix=/usr --enable-languages=c,c++,fortran --disable-multilib",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "make"
+version = "4.4.1"
+url = "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
+build = [
+    "./configure --prefix=/usr",
+    "make",
+    "make install"
+]

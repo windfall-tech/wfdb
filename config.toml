@@ -1,0 +1,74 @@
+[meta]
+name = "My Linux"
+version = "1.0"
+
+[build]
+# Build settings
+jobs = 4                           # Number of parallel jobs
+lfs_dir = "/mnt/lfs"              # Where to build the Linux system
+sources_dir = "/sources"          # Where to store source packages
+tools_dir = "/tools"              # Where to store build tools
+version = "12.2"                  # LFS book version
+
+# Debug mode (more verbose logging)
+debug = false
+
+# External configuration files
+toolchain_config = "LFS/toolchain.toml"  # Toolchain packages configuration
+lfs_config = "LFS/lfs_build.toml"        # Core LFS build configuration
+
+# Users to create in the final system
+[users]
+# LFS build user (temporary)
+lfs_user = "lfs"
+lfs_group = "lfs"
+
+# System users to create after LFS build
+[[users.system]]
+name = "root"
+uid = 0
+gid = 0
+home = "/root"
+shell = "/bin/bash"
+password_hash = ""  # Set during build
+
+[[users.system]]
+name = "admin"
+uid = 1000
+gid = 1000
+home = "/home/admin"
+shell = "/bin/bash"
+groups = ["wheel", "sudo"]
+password_hash = ""  # Set during build or post-install
+
+[[users.system]]
+name = "user"
+uid = 1001
+gid = 1001
+home = "/home/user"
+shell = "/bin/bash"
+groups = ["users"]
+password_hash = ""  # Set during build or post-install
+
+# System packages to install after LFS base system
+[[packages]]
+name = "nano"
+version = "7.2"
+url = "https://ftp.gnu.org/gnu/nano/nano-7.2.tar.xz"
+md5 = "03233ae38ea3fbc2cc7865d49edfccac"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc --enable-utf8 --docdir=/usr/share/doc/nano-7.2",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "wget"
+version = "1.21.4"
+url = "https://ftp.gnu.org/gnu/wget/wget-1.21.4.tar.gz"
+md5 = "6ee79686a32c4fbd3bf0bdf1d5a66a51"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc --with-ssl=openssl",
+    "make",
+    "make install"
+]

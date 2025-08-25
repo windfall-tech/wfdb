@@ -1,0 +1,98 @@
+# Server Linux Configuration  
+# A minimal Linux distribution optimized for servers
+
+[meta]
+name = "Server Linux"
+version = "1.0"
+description = "Minimal Linux distribution for servers"
+
+[build]
+jobs = 4
+lfs_dir = "/mnt/serverlinux"
+sources_dir = "/sources"
+tools_dir = "/tools"
+version = "12.2"
+debug = false
+
+# External configuration files
+toolchain_config = "LFS/toolchain.toml"
+lfs_config = "LFS/lfs_build.toml"
+
+# Server users
+[users]
+lfs_user = "lfs"
+lfs_group = "lfs"
+
+[[users.system]]
+name = "root"
+uid = 0
+gid = 0
+home = "/root"
+shell = "/bin/bash"
+
+[[users.system]]
+name = "admin"
+uid = 1000
+gid = 1000
+home = "/home/admin"
+shell = "/bin/bash"
+groups = ["wheel", "sudo"]
+
+[[users.system]]
+name = "nginx"
+uid = 33
+gid = 33
+home = "/var/www"
+shell = "/usr/sbin/nologin"
+
+# Essential server packages (added after LFS base system)
+[[packages]]
+name = "openssh"
+version = "9.4p1"
+url = "https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-9.4p1.tar.gz"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc/ssh --with-privsep-path=/var/lib/sshd",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "nginx"
+version = "1.24.0"
+url = "http://nginx.org/download/nginx-1.24.0.tar.gz"
+build = [
+    "./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "curl"
+version = "8.2.1"
+url = "https://curl.se/download/curl-8.2.1.tar.xz"
+build = [
+    "./configure --prefix=/usr --with-openssl --enable-threaded-resolver",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "rsync"
+version = "3.2.7"
+url = "https://download.samba.org/pub/rsync/src/rsync-3.2.7.tar.gz"
+build = [
+    "./configure --prefix=/usr",
+    "make",
+    "make install"
+]
+
+[[packages]]
+name = "htop"
+version = "3.2.2"
+url = "https://github.com/htop-dev/htop/archive/3.2.2.tar.gz"
+commands = [
+    "./autogen.sh",
+    "./configure --prefix=/usr",
+    "make",
+    "make install"
+]

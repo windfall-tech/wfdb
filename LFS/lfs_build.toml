@@ -1,6 +1,7 @@
 # LFS Build Configuration in TOML format
 # Complete replacement for lfs.xsl XSLT transformation
-# This file defines the entire LFS build process in pure TOML
+# This file defines the core LFS build process in pure TOML
+# User configuration is now handled in the main config.toml
 
 [lfs_build]
 version = "12.2"
@@ -10,7 +11,6 @@ book_title = "Linux From Scratch"
 
 # Build parameters (replaces XSL parameters exactly)
 [lfs_build.parameters]
-luser_lgroup = "lfs:lfs"
 pkgmngt_wrap = "nn"  # nn=no, ny=meaningless, yn=yes+PKG_DEST, yy=yes+wrap
 testsuite = 1        # 0=none, 1=critical, 2=all
 keepdir = false      # Keep build directories in chapter 8
@@ -88,7 +88,8 @@ chroot = true
 user = "root"
 description = "Install kernel and bootloader"
 
-# LFS Package definitions (replaces XML book parsing)
+# Core LFS System Packages (Chapter 7+)
+# Toolchain packages (Chapters 5-6) are now in toolchain.toml
 [[lfs_packages]]
 name = "binutils"
 version = "2.43.1"

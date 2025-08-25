@@ -1,0 +1,310 @@
+# Toolchain Configuration - All packages needed for LFS toolchain
+# This replaces chapter-based organization with a simple download list
+# Chapters 5 & 6 from LFS - Cross-compilation toolchain and temporary tools
+
+[toolchain]
+version = "12.2"
+target_arch = "x86_64"
+description = "Complete LFS toolchain packages"
+
+# Cross-compilation toolchain packages (Chapter 5)
+[[packages]]
+name = "binutils"
+version = "2.43.1"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.43.1.tar.xz"
+md5 = "d6f6edf2bb42b98c98abe687c2c58bd1a1bbda2cd0cce3ac6bb5f78ae03de5da"
+pass = 1
+build_commands = [
+  "mkdir -v build && cd build",
+  "../configure --prefix=$LFS/tools --with-sysroot=$LFS --target=$LFS_TGT --disable-nls --enable-gprofng=no --disable-werror --enable-new-dtags --enable-default-hash-style=gnu",
+  "make",
+  "make install"
+]
+
+[[packages]]
+name = "gcc"
+version = "14.2.0"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz"
+md5 = "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
+pass = 1
+dependencies = ["mpfr", "gmp", "mpc"]
+build_commands = [
+  "tar -xf ../mpfr-4.2.1.tar.xz && mv -v mpfr-4.2.1 mpfr",
+  "tar -xf ../gmp-6.3.0.tar.xz && mv -v gmp-6.3.0 gmp", 
+  "tar -xf ../mpc-1.3.1.tar.gz && mv -v mpc-1.3.1 mpc",
+  "case $(uname -m) in x86_64) sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64;; esac",
+  "mkdir -v build && cd build",
+  "../configure --target=$LFS_TGT --prefix=$LFS/tools --with-glibc-version=2.40 --with-sysroot=$LFS --with-newlib --without-headers --enable-default-pie --enable-default-ssp --disable-nls --disable-shared --disable-multilib --disable-threads --disable-libatomic --disable-libgomp --disable-libquadmath --disable-libssp --disable-libvtv --disable-libstdcxx --enable-languages=c,c++",
+  "make",
+  "make install",
+  "cd .. && cat gcc/limitx.h gcc/glimits.h gcc/limity.h > `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include/limits.h"
+]
+
+[[packages]]
+name = "linux"
+version = "6.10.5"
+url = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.5.tar.xz"
+md5 = "0b15d1d9cc89ea5b5e2a98dbde1ad71ac3be6d4ba375b7e6dcef6b2e8ae24cdd"
+component = "headers"
+build_commands = [
+  "make mrproper",
+  "make headers",
+  "find usr/include -type f ! -name '*.h' -delete",
+  "cp -rv usr/include $LFS/usr"
+]
+
+[[packages]]
+name = "glibc"
+version = "2.40"
+url = "https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz"
+md5 = "19a890175e9263d748f627993de6f4b1af9cd21e03f080e4bfb3a1fac10205a2"
+build_commands = [
+  "case $(uname -m) in i?86) ln -sfv ld-linux.so.2 $LFS/lib/ld-lsb.so.3;; x86_64) ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64 && ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3;; esac",
+  "patch -Np1 -i ../glibc-2.40-fhs-1.patch",
+  "mkdir -v build && cd build",
+  "echo 'rootsbindir=/usr/sbin' > configparms",
+  "../configure --prefix=/usr --host=$LFS_TGT --build=$(../scripts/config.guess) --enable-kernel=4.19 --with-headers=$LFS/usr/include --disable-nscd libc_cv_slibdir=/usr/lib",
+  "make",
+  "make DESTDIR=$LFS install",
+  "sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd"
+]
+
+# GCC dependencies (download separately)
+[[packages]]
+name = "mpfr"
+version = "4.2.1"
+url = "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz"
+md5 = "523c50c6318dde6f9dc523bc0244690a"
+
+[[packages]]
+name = "gmp"
+version = "6.3.0"
+url = "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
+md5 = "956dc04e864001a9c22429f761f2c283"
+
+[[packages]]
+name = "mpc"
+version = "1.3.1"
+url = "https://ftp.gnu.org/gnu/mpc/mpc-1.3.1.tar.gz"
+md5 = "5c9bc658c9fd0f940e8e3e0f09530c62"
+
+# Glibc patch
+[[packages]]
+name = "glibc-fhs-patch"
+version = "2.40-fhs-1"
+url = "https://www.linuxfromscratch.org/patches/lfs/12.2/glibc-2.40-fhs-1.patch"
+md5 = "9a5997c3452909b1769918c759eff8a2"
+
+# Temporary tools (Chapter 6)
+[[packages]]
+name = "m4"
+version = "1.4.19"
+url = "https://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.xz"
+md5 = "0d90823e1426f1da2fd872df0311298d"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "ncurses"
+version = "6.5"
+url = "https://ftp.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz"
+md5 = "ac2d2629296f04c8537ca7b7b6c29a7c"
+build_commands = [
+  "sed -i s/mawk// configure",
+  "mkdir build && pushd build && ../configure && make -C include && make -C progs tic && popd",
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./config.guess) --mandir=/usr/share/man --with-manpage-format=normal --with-shared --without-normal --with-cxx-shared --without-debug --without-ada --disable-stripping",
+  "make",
+  "make DESTDIR=$LFS TIC_PATH=$(pwd)/build/progs/tic install",
+  "ln -sv libncursesw.so $LFS/usr/lib/libncurses.so",
+  "sed -e 's/^#if.*XOPEN.*$/#if 1/' -i $LFS/usr/include/curses.h"
+]
+
+[[packages]]
+name = "bash"
+version = "5.2.21"
+url = "https://ftp.gnu.org/gnu/bash/bash-5.2.21.tar.gz"
+md5 = "c17b20a09fc38d67fb303aeb6c190b63"
+build_commands = [
+  "./configure --prefix=/usr --build=$(sh support/config.guess) --host=$LFS_TGT --without-bash-malloc",
+  "make",
+  "make DESTDIR=$LFS install",
+  "ln -sv bash $LFS/bin/sh"
+]
+
+[[packages]]
+name = "coreutils"
+version = "9.5"
+url = "https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz"
+md5 = "be92d4e54e3c3e304db3da5e94dd0ed8"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(sh build-aux/config.guess) --enable-install-program=hostname --enable-no-install-program=kill,uptime",
+  "make",
+  "make DESTDIR=$LFS install",
+  "mv -v $LFS/usr/bin/chroot $LFS/usr/sbin",
+  "mkdir -pv $LFS/usr/share/man/man8",
+  "mv -v $LFS/usr/share/man/man1/chroot.1 $LFS/usr/share/man/man8/chroot.8",
+  "sed -i 's/\"1\"/\"8\"/' $LFS/usr/share/man/man8/chroot.8"
+]
+
+[[packages]]
+name = "diffutils"
+version = "3.10"
+url = "https://ftp.gnu.org/gnu/diffutils/diffutils-3.10.tar.xz"
+md5 = "2745c50f6f4e395e7b7d52f902d075bf"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "file"
+version = "5.45"
+url = "https://astron.com/pub/file/file-5.45.tar.gz"
+md5 = "26b2a96d4e3a8938827a1e572afd527a"
+build_commands = [
+  "mkdir build && pushd build && ../configure --disable-bzlib --disable-libseccomp --disable-xzlib --disable-zlib && make && popd",
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./config.guess)",
+  "make FILE_COMPILE=$(pwd)/build/src/file",
+  "make DESTDIR=$LFS install",
+  "rm -v $LFS/usr/lib/libmagic.la"
+]
+
+[[packages]]
+name = "findutils"
+version = "4.10.0"
+url = "https://ftp.gnu.org/gnu/findutils/findutils-4.10.0.tar.xz"
+md5 = "870cfd71c07d37ebe56d3b8ec2727244"
+build_commands = [
+  "./configure --prefix=/usr --localstatedir=/var/lib/locate --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "gawk"
+version = "5.3.0"
+url = "https://ftp.gnu.org/gnu/gawk/gawk-5.3.0.tar.xz"
+md5 = "97c5a7d83f91a7e1b2035ebbe6ac7abd"
+build_commands = [
+  "sed -i 's/extras//' Makefile.in",
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "grep"
+version = "3.11"
+url = "https://ftp.gnu.org/gnu/grep/grep-3.11.tar.xz"
+md5 = "7c9bbd74492131245f7cdb291fa142c0"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "gzip"
+version = "1.13"
+url = "https://ftp.gnu.org/gnu/gzip/gzip-1.13.tar.xz"
+md5 = "d5c9fc9441288817a4a0be2da0249e29"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "make"
+version = "4.4.1"
+url = "https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz"
+md5 = "c8469a3713cbbe04d955d4ae4be23ebc"
+build_commands = [
+  "./configure --prefix=/usr --without-guile --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "patch"
+version = "2.7.6"
+url = "https://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz"
+md5 = "78ad9937e4caadcba1526ef1853730d5"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "sed"
+version = "4.9"
+url = "https://ftp.gnu.org/gnu/sed/sed-4.9.tar.xz"
+md5 = "6aac9b2dbafcd5b7a67a8a9bcb8036c3"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(./build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "tar"
+version = "1.35"
+url = "https://ftp.gnu.org/gnu/tar/tar-1.35.tar.xz"
+md5 = "a2d8042658cfd8ea939e6d911eaf4152"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess)",
+  "make",
+  "make DESTDIR=$LFS install"
+]
+
+[[packages]]
+name = "xz"
+version = "5.6.2"
+url = "https://github.com/tukaani-project/xz/releases/download/v5.6.2/xz-5.6.2.tar.xz"
+md5 = "7ade7bd1181a731328f875bec62a9377"
+build_commands = [
+  "./configure --prefix=/usr --host=$LFS_TGT --build=$(build-aux/config.guess) --disable-static --docdir=/usr/share/doc/xz-5.6.2",
+  "make",
+  "make DESTDIR=$LFS install",
+  "rm -v $LFS/usr/lib/liblzma.la"
+]
+
+[[packages]]
+name = "binutils"
+version = "2.43.1"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.43.1.tar.xz"
+md5 = "d6f6edf2bb42b98c98abe687c2c58bd1a1bbda2cd0cce3ac6bb5f78ae03de5da"
+pass = 2
+build_commands = [
+  "sed '6009s/$add_dir//' -i ltmain.sh",
+  "mkdir -v build && cd build",
+  "../configure --prefix=/usr --build=$(../config.guess) --host=$LFS_TGT --disable-nls --enable-shared --enable-gprofng=no --disable-werror --enable-64-bit-bfd --enable-new-dtags --enable-default-hash-style=gnu",
+  "make",
+  "make DESTDIR=$LFS install",
+  "rm -v $LFS/usr/lib/lib{bfd,ctf,ctf-nobfd,opcodes,sframe}.{a,la}"
+]
+
+[[packages]]
+name = "gcc"
+version = "14.2.0"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz"
+md5 = "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
+pass = 2
+dependencies = ["mpfr", "gmp", "mpc"]
+build_commands = [
+  "tar -xf ../mpfr-4.2.1.tar.xz && mv -v mpfr-4.2.1 mpfr",
+  "tar -xf ../gmp-6.3.0.tar.xz && mv -v gmp-6.3.0 gmp",
+  "tar -xf ../mpc-1.3.1.tar.gz && mv -v mpc-1.3.1 mpc",
+  "case $(uname -m) in x86_64) sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64;; esac",
+  "sed '/thread_header =/s/@.*@/gthr-posix.h/' -i libgcc/Makefile.in libstdc++-v3/include/Makefile.in",
+  "mkdir -v build && cd build",
+  "../configure --build=$(../config.guess) --host=$LFS_TGT --target=$LFS_TGT LDFLAGS_FOR_TARGET=-L$PWD/$LFS_TGT/libgcc --prefix=/usr --with-build-sysroot=$LFS --enable-default-pie --enable-default-ssp --disable-nls --disable-multilib --disable-libatomic --disable-libgomp --disable-libquadmath --disable-libsanitizer --disable-libssp --disable-libvtv --enable-languages=c,c++",
+  "make",
+  "make DESTDIR=$LFS install",
+  "ln -sv gcc $LFS/usr/bin/cc"
+]

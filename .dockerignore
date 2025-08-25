@@ -1,0 +1,13 @@
+# Docker ignore file
+.git
+.gitignore
+*.md
+output/
+logs/
+sources/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.pyo
+*.backup

@@ -1,31 +1,28 @@
 # Build artifacts
-configuration*
-lfs_build_output/
-test_output/
-
-# Custom configs
-custom/config/
+/mnt/
+*-build/
+*-lfs/
+sources/
+logs/
+output/
+build.log
 
 # Python cache
-menu/__pycache__/
-tools/__pycache__/
-**/*.pyc
+__pycache__/
+*.pyc
+*.pyo
 
-# Package management (generated)
-pkgmngt/packInstall.sh
+# System files
+.DS_Store
+Thumbs.db
 
-# Legacy XML files (converted to TOML)
-pkgmngt/packageManager.xml
-*.xml.backup
+# Backup files
+*~
+*.backup
 
-# Build directories
-/mnt/
-/sources/
-/tools/
-
-# Logs
-*.log
-build.log
+# Downloaded packages
+*.tar.*
+*.tgz
 
 # IDE
 .vscode/
