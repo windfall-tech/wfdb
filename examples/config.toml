@@ -1,0 +1,71 @@
+[general]
+JHALFSDIR = "/mnt/build_dir/jhalfs"
+BUILDDIR = "/mnt/build_dir"
+LOGDIR = "./logs"
+RUNMAKE = true
+GETPKG = true
+CUSTOM_TOOLS = false
+REBUILD_MAKEFILE = false
+N_PARALLEL = 4
+ALL_CORES = false
+
+[meta]
+OS_NAME = "My Linux"
+OS_VERSION = "1.0"
+
+# Package manager configuration
+[package_manager]
+enabled = true
+type = "porg"  # Options: "porg", "dpkg", "pacman", "none"
+wrap_install = true
+
+# Additional packages to install
+[[packages]]
+name = "nano"
+version = "7.2"
+url = "https://ftp.gnu.org/gnu/nano/nano-7.2.tar.xz"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc",
+    "make -j$(nproc)",
+    "make install"
+]
+
+[[packages]]
+name = "wget"
+version = "1.21.4"
+url = "https://ftp.gnu.org/gnu/wget/wget-1.21.4.tar.gz"
+build = [
+    "./configure --prefix=/usr --sysconfdir=/etc",
+    "make -j$(nproc)",
+    "make install"
+]
+
+# LFS base system packages (automatically included)
+[[lfs_packages]]
+name = "binutils"
+version = "2.43.1"
+url = "https://ftp.gnu.org/gnu/binutils/binutils-2.43.1.tar.xz"
+md5 = "13f74202a3c4c51118b797a39ea4200d3f6cfbe224da6d1d95bb938480132dfd"
+chapter = 5
+
+[[lfs_packages]]
+name = "gcc"
+version = "14.2.0"
+url = "https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz"
+md5 = "a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9"
+chapter = 5
+
+[[lfs_packages]]
+name = "linux"
+version = "6.10.5"
+url = "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.10.5.tar.xz"
+md5 = "0b15d1d9cc89ea5b5e2a98dbde1ad71ac3be6d4ba375b7e6dcef6b2e8ae24cdd"
+chapter = 5
+component = "headers"
+
+[[lfs_packages]]
+name = "glibc"
+version = "2.40"
+url = "https://ftp.gnu.org/gnu/glibc/glibc-2.40.tar.xz"
+md5 = "19a890175e9263d748f627993de6f4b1af9cd21e03f080e4bfb3a1fac10205a2"
+chapter = 5
