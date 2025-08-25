@@ -23,10 +23,6 @@ pkgmngt/packageManager.xml
 /sources/
 /tools/
 
-# User configs (keep examples)
-my-*.toml
-!my-distro.toml
-
 # Logs
 *.log
 build.log
