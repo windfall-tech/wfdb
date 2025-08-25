@@ -12,16 +12,13 @@ import sys
 import os
 import subprocess
 import shutil
-import tempfile
 import urllib.request
 import hashlib
 import tarfile
 import zipfile
-import gzip
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
-import json
+from typing import Optional
 
 try:
     import tomllib
